@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model ContaBancaria {
+  id             String          @id @default(cuid())
+  nome           String
+  saldo          Float
+  createdAt      DateTime        @default(now())
+  extrato        ExtratoBancario[]
+
+  userId         Int
+  user           User            @relation(fields: [userId], references: [id])
+}
+
+model ExtratoBancario {
+  id             String          @id @default(cuid())
+  data           DateTime
+  descricao      String
+  categoria      String
+  valor          Float
+  tipo           String          @default("entrada") // 'entrada' ou 'saida'
+  contaBancaria  ContaBancaria   @relation(fields: [contaBancariaId], references: [id])
+  contaBancariaId String
+}
+
+model Meta {
+  id        String           @id @default(cuid())
+  nome      String
+  valor     Float
+  progresso Float
+  createdAt DateTime         @default(now())
+
+  userId    Int
+  user      User             @relation(fields: [userId], references: [id])
+}
+
+model User {
+  id              Int              @id @default(autoincrement())
+  email           String           @unique
+  name            String
+  password        String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  contasBancarias ContaBancaria[]
+  metas           Meta[]
+  estimatedValues EstimatedValue[]
+  categories   CategoryUser[]
+
+}
+
+model CategoryUser {
+  id         Int      @id @default(autoincrement())
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([categoryId, userId])
+}
+
+model Category {
+  id              Int              @id @default(autoincrement())
+  value           String           @unique
+  label           String
+  estimatedValues EstimatedValue[]
+  users           CategoryUser[]   // Adiciona o campo de relação oposta
+
+  @@index([value], name: "unique_value")  // Cria um índice único para o campo 'value'
+}
+
+model EstimatedValue {
+  id         Int       @id @default(autoincrement())
+  categoryId Int
+  category   Category  @relation(fields: [categoryId], references: [id])
+  value      Float
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+}
