@@ -1,7 +1,6 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import {PrismaClient} from '@prisma/client'
-import { hash, compare } from "bcrypt";
 import {z} from 'zod'
 import jwt,  { JwtPayload } from 'jsonwebtoken';
 const prisma = new PrismaClient({
@@ -39,16 +38,13 @@ async function bootstrap(){
       
       try {
         const { email, name, password } = UserRegistrationSchema.parse(request.body);
-        const HashPassword = await hash(password, 8)
 
-        // Gerar o hash da senha
-        const hashedPassword = await hash(password, 10);
 
         const user = await prisma.user.create({
           data: {
             email,
             name,
-            password:HashPassword,
+            password
           },
         });
     
@@ -80,11 +76,7 @@ async function bootstrap(){
           return;
         }
     
-        const isMatch = await compare(password, user.password);
-        if (!isMatch) {
-          reply.code(401).send({ error: 'Invalid credentials' });
-          return;
-        }
+
     
         // Gerar o token JWT
         const token = jwt.sign({ email: user.email, userId: user.id }, 'secret', { expiresIn: '1h' });

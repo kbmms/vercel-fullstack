@@ -15,7 +15,6 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/bcrypt": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.2",
     "@types/node": "^20.3.1",
     "prisma": "^4.14.1",
@@ -27,7 +26,6 @@
     "@fastify/oauth2": "^7.1.0",
     "@prisma/client": "^4.14.1",
     "axios": "^1.4.0",
-    "bcrypt": "^5.1.0",
     "date-fns": "^2.30.0",
     "fastify": "^4.17.0",
     "google-auth-library": "^8.8.0",
