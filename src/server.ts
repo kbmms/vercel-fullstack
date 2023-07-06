@@ -522,15 +522,47 @@ async function bootstrap(){
           if (!userId) {
             return reply.status(401).send({ error: 'ID do usuário não encontrado no token.' });
           }
-      
-          // Recupere os registros de extrato bancário do banco de dados usando o Prisma
-          const extratoBancario = await prisma.extratoBancario.findMany({
-            where: {
-              contaBancaria: {
-                userId: Number(userId),
+
+          const { startDate, endDate } = request.query as { startDate?: string; endDate?: string };
+
+
+          let extratoBancario;
+          if(startDate && endDate) {
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+            if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+              return reply.status(400).send({ message: 'Formato de data inválido. Use o formato yyyy-MM-dd.' });
+            }
+
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            end.setDate(end.getDate() + 1);
+
+            // Recupere os registros de extrato bancário do banco de dados usando o Prisma
+            extratoBancario = await prisma.extratoBancario.findMany({
+              where: {
+                data: {
+                  gte: start,
+                  lt: end,
+                },
+                contaBancaria: {
+                  userId: Number(userId),
+                },
               },
-            },
-          });
+            });
+      
+          }else {
+            
+              // Recupere os registros de extrato bancário do banco de dados usando o Prisma
+              extratoBancario = await prisma.extratoBancario.findMany({
+                where: {
+                  contaBancaria: {
+                    userId: Number(userId),
+                  },
+                },
+              });
+          
+          }
       
           // Crie um objeto para armazenar o valor total gasto em cada categoria
           const gastosPorCategoria = {};
