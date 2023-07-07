@@ -308,8 +308,13 @@ async function bootstrap(){
           return reply.status(404).send({ message: 'Conta bancária não encontrada.' });
         }
 
-        const data = new Date();
-        const dataAjustada = new Date(data.getTime() - (data.getTimezoneOffset() * 60000)).toISOString();  // Passa a data atual
+        const data = new Date(); // Supondo que você tenha a data atual no frontend
+        const fusoHorarioBrasil = 3; // Ajuste o valor de acordo com o fuso horário do Brasil em relação ao UTC
+        
+        data.setHours(data.getHours() - fusoHorarioBrasil);
+        
+        const dataFormatada = data.toISOString();
+
         // Cria o registro no extrato
         const extrato = await prisma.extratoBancario.create({
           data: {
@@ -317,7 +322,7 @@ async function bootstrap(){
             categoria,
             valor,
             tipo,
-            data: dataAjustada,
+            data: dataFormatada,
             contaBancaria: { connect: { id } },
           },
         });
