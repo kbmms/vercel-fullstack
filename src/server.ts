@@ -307,7 +307,9 @@ async function bootstrap(){
         if (!contaBancaria) {
           return reply.status(404).send({ message: 'Conta bancária não encontrada.' });
         }
-      
+
+        const data = new Date();
+        const dataAjustada = new Date(data.getTime() - (data.getTimezoneOffset() * 60000)).toISOString();  // Passa a data atual
         // Cria o registro no extrato
         const extrato = await prisma.extratoBancario.create({
           data: {
@@ -315,7 +317,7 @@ async function bootstrap(){
             categoria,
             valor,
             tipo,
-            data: new Date(), // Passa a data atual
+            data: dataAjustada,
             contaBancaria: { connect: { id } },
           },
         });
