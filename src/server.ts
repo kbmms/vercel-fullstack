@@ -329,7 +329,7 @@ async function bootstrap(){
         
         // Atualiza o saldo da conta com base no tipo de transação
         const saldoAtualizado =
-          tipo === 'entrada' ? contaBancaria.saldo + valor : contaBancaria.saldo - valor;
+          tipo === 'receita' ? contaBancaria.saldo + valor : contaBancaria.saldo - valor;
       
         await prisma.contaBancaria.update({
           where: { id },
