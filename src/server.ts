@@ -18,7 +18,7 @@ async function bootstrap(){
     descricao: string;
     categoria: string;
     valor: number;
-    tipo: 'entrada' | 'saida';
+    tipo: 'receita' | 'despesa';
   }
 
 
