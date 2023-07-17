@@ -478,7 +478,84 @@ async function bootstrap(){
       
 
 
+      // extrato sem paginação
+      fastify.get('/extratos/all', async (request, reply) => {
+        const { startDate, endDate } = request.query as { startDate?: string; endDate?: string };
+        try {
+          const token = request.headers.authorization?.replace('Bearer ', '');
       
+          if (!token) {
+            return reply.status(401).send({ error: 'Token de autenticação não fornecido.' });
+          }
+      
+          const decodedToken = jwt.verify(token, 'secret');
+      
+          if (!decodedToken) {
+            return reply.status(401).send({ error: 'Token de autenticação inválido.' });
+          }
+      
+          const userId = decodedToken.userId;
+      
+          if (!userId) {
+            return reply.status(401).send({ error: 'ID do usuário não encontrado no token.' });
+          }
+
+
+          let extratos;
+
+          if (startDate && endDate) {
+          // Regex para validar o formato yyyy-MM-dd
+          const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      
+          if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+            return reply.status(400).send({ message: 'Formato de data inválido. Use o formato yyyy-MM-dd.' });
+          }
+          // Converter as datas para o formato adequado para consulta no banco de dados (dependendo do banco de dados utilizado)
+          const start = new Date(startDate);
+          const end = new Date(endDate);
+      
+          // Adicionar 1 dia à data de término para incluir as transações até o final do dia
+          end.setDate(end.getDate() + 1);
+          // Filtrar os extratos com base no período
+          extratos = await prisma.extratoBancario.findMany({
+            where: {
+              contaBancaria: {
+                userId: Number(userId),
+              },
+              data: {
+                gte: start,
+                lt: end,
+              },
+            },
+            include: {
+              contaBancaria: true,
+            },
+          });
+
+      
+          }else{
+          // Caso não seja fornecido um período, retornar todos os extratos
+          extratos = await prisma.extratoBancario.findMany({
+            where:{
+              contaBancaria: {
+                userId: Number(userId),
+              },
+            },
+            include: {
+              contaBancaria: true,
+            },
+          });
+          }
+      
+          return reply.status(200).send({ extratos });
+        } catch (error) {
+          console.error(error);
+          return reply.status(500).send({ error: 'Internal Server Error' });
+        }
+      });
+      
+      
+      //extrato com paginação
       fastify.get('/extratos', async (request, reply) => {
         const { startDate, endDate, page = 1, limit = 10 } = request.query;
         try {
@@ -590,7 +667,6 @@ async function bootstrap(){
           return reply.status(500).send({ error: 'Internal Server Error' });
         }
       });
-      
       
       
 
