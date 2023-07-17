@@ -480,7 +480,7 @@ async function bootstrap(){
 
       
       fastify.get('/extratos', async (request, reply) => {
-        const { startDate, endDate } = request.query as { startDate?: string; endDate?: string };
+        const { startDate, endDate, page = 1, limit = 10 } = request.query;
         try {
           const token = request.headers.authorization?.replace('Bearer ', '');
       
@@ -499,61 +499,97 @@ async function bootstrap(){
           if (!userId) {
             return reply.status(401).send({ error: 'ID do usuário não encontrado no token.' });
           }
-
-
-          let extratos;
-
-          if (startDate && endDate) {
-          // Regex para validar o formato yyyy-MM-dd
-          const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       
-          if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
-            return reply.status(400).send({ message: 'Formato de data inválido. Use o formato yyyy-MM-dd.' });
+          const pageNumber = parseInt(page, 10);
+          const limitNumber = parseInt(limit, 10);
+      
+          if (isNaN(pageNumber) || isNaN(limitNumber)) {
+            return reply.status(400).send({ message: 'Os parâmetros de paginação devem ser números inteiros.' });
           }
-          // Converter as datas para o formato adequado para consulta no banco de dados (dependendo do banco de dados utilizado)
-          const start = new Date(startDate);
-          const end = new Date(endDate);
       
-          // Adicionar 1 dia à data de término para incluir as transações até o final do dia
-          end.setDate(end.getDate() + 1);
-          // Filtrar os extratos com base no período
-          extratos = await prisma.extratoBancario.findMany({
+          const startIndex = (pageNumber - 1) * limitNumber;
+          const endIndex = startIndex + limitNumber;
+      
+          let extratos;
+      
+          if (startDate && endDate) {
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      
+            if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+              return reply.status(400).send({ message: 'Formato de data inválido. Use o formato yyyy-MM-dd.' });
+            }
+      
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+      
+            end.setDate(end.getDate() + 1);
+      
+            extratos = await prisma.extratoBancario.findMany({
+              where: {
+                contaBancaria: {
+                  userId: Number(userId),
+                },
+                data: {
+                  gte: start,
+                  lt: end,
+                },
+              },
+              include: {
+                contaBancaria: true,
+              },
+              orderBy: {
+                data: 'desc', // Ordenar por data em ordem decrescente (mais recente primeiro)
+              },
+              skip: startIndex,
+              take: limitNumber,
+            });
+          } else {
+            extratos = await prisma.extratoBancario.findMany({
+              where: {
+                contaBancaria: {
+                  userId: Number(userId),
+                },
+              },
+              include: {
+                contaBancaria: true,
+              },
+              orderBy: {
+                data: 'desc', // Ordenar por data em ordem decrescente (mais recente primeiro)
+              },
+              skip: startIndex,
+              take: limitNumber,
+            });
+          }
+      
+          const totalCount = await prisma.extratoBancario.count({
             where: {
               contaBancaria: {
                 userId: Number(userId),
               },
-              data: {
-                gte: start,
-                lt: end,
-              },
-            },
-            include: {
-              contaBancaria: true,
             },
           });
-
       
-          }else{
-          // Caso não seja fornecido um período, retornar todos os extratos
-          extratos = await prisma.extratoBancario.findMany({
-            where:{
-              contaBancaria: {
-                userId: Number(userId),
-              },
-            },
-            include: {
-              contaBancaria: true,
+          const totalPages = Math.ceil(totalCount / limitNumber);
+      
+          const hasPreviousPage = pageNumber > 1;
+          const hasNextPage = endIndex < totalCount;
+      
+          return reply.status(200).send({
+            extratos,
+            pageInfo: {
+              page: pageNumber,
+              limit: limitNumber,
+              totalCount,
+              totalPages,
+              hasPreviousPage,
+              hasNextPage,
             },
           });
-          }
-      
-          return reply.status(200).send({ extratos });
         } catch (error) {
           console.error(error);
           return reply.status(500).send({ error: 'Internal Server Error' });
         }
       });
-      
       
       
       
