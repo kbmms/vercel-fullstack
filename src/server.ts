@@ -12,6 +12,7 @@ async function bootstrap(){
 
   interface TransacaoRequestParams {
     id: string;
+    extratoId: string;
   }
   
   interface TransacaoRequestBody {
@@ -338,6 +339,142 @@ async function bootstrap(){
       
         return reply.status(201).send({ extrato, saldo: saldoAtualizado });
       });
+      
+
+      fastify.put<{ Params: TransacaoRequestParams; Body: TransacaoRequestBody }>('/account/:id/extrato/:extratoId', async (request, reply) => {
+        const { id, extratoId } = request.params;
+        const { descricao, categoria, valor, tipo } = request.body;
+      
+        const contaBancaria = await prisma.contaBancaria.findUnique({
+          where: { id },
+        });
+      
+        if (!contaBancaria) {
+          return reply.status(404).send({ message: 'Conta bancária não encontrada.' });
+        }
+      
+        const extratoAnterior = await prisma.extratoBancario.findUnique({
+          where: { id: extratoId },
+        });
+      
+        if (!extratoAnterior) {
+          return reply.status(404).send({ message: 'Extrato não encontrado.' });
+        }
+      
+        const saldoInicial = contaBancaria.saldo;
+        let saldoAtualizado = saldoInicial;
+      
+        if (extratoAnterior.tipo === 'receita') {
+          saldoAtualizado -= extratoAnterior.valor;
+        } else {
+          saldoAtualizado += extratoAnterior.valor;
+        }
+      
+        if (tipo === 'receita') {
+          saldoAtualizado += valor;
+        } else {
+          saldoAtualizado -= valor;
+        }
+      
+        await prisma.extratoBancario.update({
+          where: { id: extratoId },
+          data: {
+            descricao,
+            categoria,
+            valor,
+            tipo,
+          },
+        });
+      
+        await prisma.contaBancaria.update({
+          where: { id },
+          data: { saldo: saldoAtualizado },
+        });
+      
+        return reply.status(200).send({ saldo: saldoAtualizado });
+      });
+      
+      
+
+
+
+
+
+
+
+
+
+
+
+
+      
+
+
+//Deletar extrato e retonar o valor exato
+      fastify.delete('/api/extratos/:id', async (request, reply) => {
+        try {
+          const extratoId = request.params.id;
+      
+          // Buscar o extrato pelo ID
+          const extrato = await prisma.extratoBancario.findUnique({
+            where: { id: extratoId },
+            include: { contaBancaria: true },
+          });
+      
+          if (!extrato) {
+            reply.code(404).send({ message: 'Extrato não encontrado.' });
+            return;
+          }
+      
+          // Verificar o tipo de extrato (despesa ou receita)
+          if (extrato.tipo === 'despesa') {
+            // Extrato de despesa: devolver o valor
+            const valor = extrato.valor;
+            // Aqui você pode implementar a lógica para devolver o valor da despesa
+      
+            // Lógica de devolução da despesa
+            // Exemplo: Atualizar o saldo da conta bancária
+            const contaId = extrato.contaBancariaId;
+            await prisma.contaBancaria.update({
+              where: { id: contaId },
+              data: { saldo: extrato.contaBancaria.saldo + valor },
+            });
+      
+            // Deletar o extrato
+            await prisma.extratoBancario.delete({ where: { id: extratoId } });
+      
+            reply.send({ message: 'Extrato de despesa deletado com sucesso.' });
+          } else if (extrato.tipo === 'receita') {
+            // Extrato de receita: estornar o valor
+            const valor = extrato.valor;
+            // Aqui você pode implementar a lógica para estornar o valor da receita
+      
+            // Lógica de estorno da receita
+            // Exemplo: Atualizar o saldo da conta bancária
+            const contaId = extrato.contaBancariaId;
+            
+            await prisma.contaBancaria.update({
+              where: { id: contaId },
+              data: { saldo: Number((extrato.contaBancaria.saldo - valor).toFixed(2)) },
+            });
+      
+            // Deletar o extrato
+            await prisma.extratoBancario.delete({ where: { id: extratoId } });
+      
+            reply.send({ message: 'Extrato de receita deletado com sucesso.' });
+          } else {
+            // Tipo de extrato inválido
+            reply.code(400).send({ message: 'Tipo de extrato inválido.' });
+          }
+        } catch (error) {
+          console.error('Erro ao deletar o extrato:', error);
+          reply.code(500).send({ message: 'Erro ao deletar o extrato.' });
+        }
+      });
+      
+
+
+
       
 
 
