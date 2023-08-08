@@ -637,11 +637,17 @@ async function bootstrap(){
               take: limitNumber,
             });
           }
-      
+          const start = new Date(startDate);
+          const end = new Date(endDate);
+    
           const totalCount = await prisma.extratoBancario.count({
             where: {
               contaBancaria: {
                 userId: Number(userId),
+              },
+              data: {
+                gte: start,
+                lt: end,
               },
             },
           });
